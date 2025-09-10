@@ -11,7 +11,7 @@
 - `end_id[ID_W-1:0]` => ID for this end request. Valid when `{verilog} end_valid` is 1
 
 **Handshake rule (applies to both start & end):** a transfer “**fires**” in a cycle iff ` valid && ready` are **both 1**.
-# Result side (DUT to UART)
+## Result side (DUT to UART)
 - `out_valid` => "There's a completed measurment this cycle" (Pulse after end fires)
 - `out_ready` => consumer's (UART) permission: "I can take a result this cycle"
 - `out_id[ID_W-1:0]` => ID of completed event
@@ -29,7 +29,7 @@
 ## Lookups (Comb Reads of Scoreboard)
 - `assign valid_at_start = valid_mem[start_id]` => "Is this `start_id` already active?"
 	- blocks double starts
-- `assign valid_at_end = valid_mem[start_id]` => "Was there a start for this `{verilog}end_id`?"
+- `assign valid_at_end = valid_mem[start_id]` => "Was there a start for this `end_id`?"
 	- Blocks an end without a start
 ## Collision Detection (Hazards)
 - `hazard_same_id = start_valid && end_valid && (start_id == end_id)` => Both sides are trying to operate on the **same ID in the same cycle**
