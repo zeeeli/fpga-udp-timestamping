@@ -89,8 +89,46 @@ module event_timestamper #(
     end
   end
 
-  // TODO: 1 Cycle pipelining of end path and compute output
   //--------------------------------------------------------------------------------------------------------
-  // End Path Pipelining
+  // End Path Single Cycle Pipelining
   //--------------------------------------------------------------------------------------------------------
+  // pipeline registers
+  logic            end_fire_q;
+  logic [ID_W-1:0] end_id_q;
+  logic [TS_W-1:0] end_ts_q;    // Timestamp at the end
+  logic [TS_W-1:0] start_ts_q;  // Fetched start timestamp
+
+  always_ff @(posedge clk) begin : end_pipeline
+    if (rst) begin
+      end_fire_q  <= 1'b0;
+      end_id_q    <= '0;
+      end_ts_q    <= '0;
+      start_ts_q  <= '0;
+    end else begin
+      end_fire_q  <= end_fire;
+      if (end_fire) begin
+        end_id_q          <= end_id;
+        end_ts_q          <= cnt_q;                  // Capturing end time
+        start_ts_q        <= start_ts_mem[end_id];   // Comb. read of start time
+        valid_mem[end_id] <= 1'b0;                   // Make ID free again
+      end
+    end
+  end
+
+  // One cycle delay output
+  always_ff @(posedge clk) begin : cycle_delayed_output
+    if (rst) begin
+      out_valid    <= 1'b0;
+      out_id       <= '0;
+      out_start_ts <= '0;
+      out_end_ts   <= '0;
+      out_delta    <= '0;
+    end else begin
+      out_valid    <= end_fire_q;                     // NOTE: one cycle Pulse
+      out_id       <= end_id_q;
+      out_start_ts <= start_ts_q;
+      out_end_ts   <= end_ts_q;
+      out_delta    <= end_ts_q - start_ts_q;          // Mod subtraction with wrapping
+    end
+  end
 endmodule
