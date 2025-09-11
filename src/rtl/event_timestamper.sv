@@ -70,24 +70,27 @@ module event_timestamper #(
   // end_ready   -> requires the ID to be active AND destination to be ready
   // start_ready -> blocks the reuse of an active ID and blocks same ID
   //                when END fires
-  logic end_may_fire;
-  assign end_ready    = valid_at_end      && out_ready;
-  assign end_may_fire = end_valid         && end_ready;
-  assign start_ready  = (!valid_at_start) && !(hazard_same_id && end_may_fire);
-
-  // handshaking events (fires)
   logic start_fire, end_fire;
-  assign start_fire = start_valid && start_ready;
-  assign end_fire   = end_valid   && end_ready;
+  assign end_ready    = valid_at_end      && out_ready;
+  assign end_fire     = end_valid         && end_ready;
+
+  assign start_ready  = (!valid_at_start) && !(hazard_same_id && end_fire);
+  assign start_fire   = start_valid       && start_ready;
+
 
   //--------------------------------------------------------------------------------------------------------
   // Writing Into Scoreboard
   //--------------------------------------------------------------------------------------------------------
   // On start fire, keep current timestamp and ID active
-  always_ff @(posedge clk) begin : write_to_scoreboard
+  always_ff @(posedge clk) begin : write_start_to_scoreboard
     if (start_fire) begin
       start_ts_mem[start_id] <= cnt_q;
       valid_mem[start_id]    <= 1'b1;
     end
   end
+
+  // TODO: 1 Cycle pipelining of end path and compute output
+  //--------------------------------------------------------------------------------------------------------
+  // End Path Pipelining
+  //--------------------------------------------------------------------------------------------------------
 endmodule
