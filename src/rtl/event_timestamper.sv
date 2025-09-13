@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 module event_timestamper #(
     parameter int unsigned ID_W = 4,      // Width of event IDs
     parameter int unsigned TS_W = 64      // Width of timestamp counter
@@ -93,7 +94,7 @@ module event_timestamper #(
   // End Path Single Cycle Pipelining
   //--------------------------------------------------------------------------------------------------------
   // pipeline registers
-  logic            end_fire_q;
+  logic            end_fire_q;  // end_fire delayed 1 cycle
   logic [ID_W-1:0] end_id_q;
   logic [TS_W-1:0] end_ts_q;    // Timestamp at the end
   logic [TS_W-1:0] start_ts_q;  // Fetched start timestamp
@@ -122,13 +123,13 @@ module event_timestamper #(
       out_id       <= '0;
       out_start_ts <= '0;
       out_end_ts   <= '0;
-      out_delta    <= '0;
+      out_ts       <= '0;
     end else begin
       out_valid    <= end_fire_q;                     // NOTE: one cycle Pulse
       out_id       <= end_id_q;
       out_start_ts <= start_ts_q;
       out_end_ts   <= end_ts_q;
-      out_delta    <= end_ts_q - start_ts_q;          // Mod subtraction with wrapping
+      out_ts       <= end_ts_q - start_ts_q;          // Mod subtraction with wrapping
     end
   end
 endmodule

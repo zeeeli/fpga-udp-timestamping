@@ -73,8 +73,9 @@ module tb_ev_timer_v1;
 
   // Queue for expected outputs
   exp_t exp_q[$];
-
-  //--------------------------------------------------------------------------------------------------------
+  exp_t exp_rec;  // for handshake task (xvlog likes it outside task scope)
+  exp_t exp_comp; // for DUT vs expected comparison
+ //--------------------------------------------------------------------------------------------------------
   // Handshake Helper Functions
   //--------------------------------------------------------------------------------------------------------
   task automatic drive_start(input logic [ID_W-1:0] id);
@@ -105,15 +106,14 @@ module tb_ev_timer_v1;
       do @(posedge clk); while (!end_ready);
 
       // After handshake, compute output (struct)
-      exp_t exp;
-      exp.id       = id;
-      exp.end_ts   = tb_cnt;  // Timestamp at end
-      exp.start_ts = tb_start_ts;  // Pull start from scoreboard
-      exp.delta    = exp.end_ts - exp.start_ts;
-      exp_q.push_back(exp);   // push expected result onto queue
+      exp_rec.id       = id;
+      exp_rec.end_ts   = tb_cnt;  // Timestamp at end
+      exp_rec.start_ts = tb_start_ts[id];  // Pull start from scoreboard
+      exp_rec.delta    = exp_rec.end_ts - exp_rec.start_ts;
+      exp_q.push_back(exp_rec);   // push expected result onto queue
       tb_id_active[id] = 0;   // clear id from scoreboard
       $display("[%0t] END    id=%0d  start=%0d end=%0d delta=%0d  (result expected next cycle)",
-               $time, id, exp.start_ts, exp.end_ts, exp.delta);
+               $time, id, exp_rec.start_ts, exp_rec.end_ts, exp_rec.delta);
 
       // Reset valid to 0 at next cycle
       end_valid = 1'b0;
@@ -127,13 +127,13 @@ module tb_ev_timer_v1;
   always_ff @(posedge clk) begin
     if (out_valid) begin
       if (exp_q.size()==0) $fatal("ERROR: DUT produced no results!");
-      exp_t exp = exp_q.pop_front();
+      exp_comp = exp_q.pop_front(); // Blocking fine because only temp variable
 
       // compare expected vs outputs individual fields
-      if (out_id       !== exp.id)       $fatal("ID mismatch: got %0d, exp %0d", out_id, exp.id);
-      if (out_start_ts !== exp.start_ts) $fatal("start_ts mismatch: got %0d, exp %0d", out_start_ts, exp.start_ts);
-      if (out_end_ts   !== exp.end_ts)   $fatal("end_ts mismatch: got %0d, exp %0d", out_end_ts, exp.end_ts);
-      if (out_delta    !== exp.delta)    $fatal("delta mismatch: got %0d, exp %0d", out_delta, exp.delta);
+      if (out_id       !== exp_comp.id)       $fatal("ID mismatch: got %0d, exp %0d", out_id, exp_comp.id);
+      if (out_start_ts !== exp_comp.start_ts) $fatal("start_ts mismatch: got %0d, exp %0d", out_start_ts, exp_comp.start_ts);
+      if (out_end_ts   !== exp_comp.end_ts)   $fatal("end_ts mismatch: got %0d, exp %0d", out_end_ts, exp_comp.end_ts);
+      if (out_delta    !== exp_comp.delta)    $fatal("delta mismatch: got %0d, exp %0d", out_delta, exp_comp.delta);
       $display("[%0t] OUT    id=%0d  start=%0d end=%0d delta=%0d  (OK)", $time, out_id, out_start_ts, out_end_ts, out_delta);
     end
   end
