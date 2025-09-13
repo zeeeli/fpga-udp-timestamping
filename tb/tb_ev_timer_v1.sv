@@ -31,7 +31,7 @@ module tb_ev_timer_v1;
   always #2.5 clk = ~clk;
 
   // Reset (active high)
-  logic rst = 0;
+  logic rst = 1;
 
   //--------------------------------------------------------------------------------------------------------
   // Instantiate DUT
@@ -121,5 +121,64 @@ module tb_ev_timer_v1;
     end
   endtask
 
+  //--------------------------------------------------------------------------------------------------------
+  // Comparing DUT vs Queue Outputs
+  //--------------------------------------------------------------------------------------------------------
+  always_ff @(posedge clk) begin
+    if (out_valid) begin
+      if (exp_q.size()==0) $fatal("ERROR: DUT produced no results!");
+      exp_t exp = exp_q.pop_front();
 
+      // compare expected vs outputs individual fields
+      if (out_id       !== exp.id)       $fatal("ID mismatch: got %0d, exp %0d", out_id, exp.id);
+      if (out_start_ts !== exp.start_ts) $fatal("start_ts mismatch: got %0d, exp %0d", out_start_ts, exp.start_ts);
+      if (out_end_ts   !== exp.end_ts)   $fatal("end_ts mismatch: got %0d, exp %0d", out_end_ts, exp.end_ts);
+      if (out_delta    !== exp.delta)    $fatal("delta mismatch: got %0d, exp %0d", out_delta, exp.delta);
+      $display("[%0t] OUT    id=%0d  start=%0d end=%0d delta=%0d  (OK)", $time, out_id, out_start_ts, out_end_ts, out_delta);
+    end
+  end
+
+  //--------------------------------------------------------------------------------------------------------
+  // Stimulus
+  //--------------------------------------------------------------------------------------------------------
+  initial begin
+    // default values
+    start_valid = 0; start_id = 0; end_valid = 0; end_id = '0; out_ready = 1; // ready stays high for pulse
+
+    // dumpfile if needed
+    $dumpfile("tb_ev_timer_v1.vcd"); $dumpvars(0, tb_ev_timer_v1);
+
+    // reset
+    repeat (4) @(posedge clk);
+    rst = 0;
+    @(posedge clk);
+
+    // Scenario 1 => Start to end datapath with ID = 3
+    drive_start(3);
+    repeat (5) @(posedge clk);
+    drive_end(3);
+    @(posedge clk); // Out here
+
+    // Scenario 2 => Burst -> start 0,1,2 then end 1,0,2 (out of order)
+    drive_start(0); drive_start(1); drive_start(2);
+    repeat (3) @(posedge clk);
+    drive_end(1); drive_end(0); drive_end(2);
+
+    // Scenario 3 => same-ID, same-cycle: Testing end-wins hazard control
+    drive_start(5); repeat (2) @(posedge clk);
+    // assert both in same cycle
+    start_id = 5; start_valid = 1; end_id = 5; end_valid = 1;
+    @(posedge clk);
+    if (end_ready && end_valid) begin
+      $display("[%0t] COLLISION: END fired (wins); START will retry next", $time);
+    end
+    end_valid = 0;
+    do @(posedge clk); while (!start_ready);  // start succeeds after end clears
+    tb_id_active[5] = 1; tb_start_ts[5] = tb_cnt; start_valid = 0;
+    repeat (4) @(posedge clk); drive_end(5);
+
+    repeat(10) @(posedge clk);
+    $display("All Checks Passed.");
+    $finish;
+  end
 endmodule
