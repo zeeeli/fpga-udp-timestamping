@@ -74,11 +74,50 @@ module tb_ev_timer_v1;
   // Queue for expected outputs
   exp_t exp_q[$];
 
-  //TODO:
   //--------------------------------------------------------------------------------------------------------
   // Handshake Helper Functions
   //--------------------------------------------------------------------------------------------------------
+  task automatic drive_start(input logic [ID_W-1:0] id);
+    begin
+      start_id    = id;
+      start_valid = 1'b1;
 
+      // Hold valid until handshake (ie. when valid AND ready on same edge)
+      do @(posedge clk); while (!start_ready);
+
+      // After handshake, update scoreboard
+      tb_id_active[id] = 1'b1;
+      tb_start_ts[id]  = tb_cnt;
+      $display("[%0t] START  id=%0d ts=%0d (valid_at_start==0 so ts accepted)", $time, id, tb_cnt);
+
+      // Reset valid to 0 at next cycle
+      start_valid = 1'b0;
+      @(posedge clk);
+    end
+  endtask
+
+  task automatic drive_end(input logic [ID_W-1:0] id);
+    begin
+      end_id    = id;
+      end_valid = 1'b1;
+
+      // Hold valid until handshake (ie. when valid AND ready on same edge)
+      do @(posedge clk); while (!end_ready);
+
+      // After handshake, compute output (struct)
+      exp_t exp;
+      exp.id       = id;
+      exp.end_ts   = tb_cnt;  // Timestamp at end
+      exp.start_ts = tb_start_ts;  // Pull start from scoreboard
+      exp.delta    = exp.end_ts - exp.start_ts;
+      $display("[%0t] END    id=%0d  start=%0d end=%0d delta=%0d  (result expected next cycle)",
+               $time, id, exp.start_ts, exp.end_ts, exp.delta);
+
+      // Reset valid to 0 at next cycle
+      end_valid = 1'b0;
+      @(posedge clk);
+    end
+  endtask
 
 
 endmodule
