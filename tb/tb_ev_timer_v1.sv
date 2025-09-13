@@ -110,6 +110,8 @@ module tb_ev_timer_v1;
       exp.end_ts   = tb_cnt;  // Timestamp at end
       exp.start_ts = tb_start_ts;  // Pull start from scoreboard
       exp.delta    = exp.end_ts - exp.start_ts;
+      exp_q.push_back(exp);   // push expected result onto queue
+      tb_id_active[id] = 0;   // clear id from scoreboard
       $display("[%0t] END    id=%0d  start=%0d end=%0d delta=%0d  (result expected next cycle)",
                $time, id, exp.start_ts, exp.end_ts, exp.delta);
 
