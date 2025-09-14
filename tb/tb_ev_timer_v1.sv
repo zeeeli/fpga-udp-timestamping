@@ -71,12 +71,19 @@ module tb_ev_timer_v1;
   logic            tb_id_active [2**ID_W];
   logic [TS_W-1:0] tb_start_ts  [2**ID_W];
 
-  // Queue for expected outputs
-  exp_t exp_q[$];
   exp_t exp_rec;  // for handshake task (xvlog likes it outside task scope)
   exp_t exp_comp; // for DUT vs expected comparison
- //--------------------------------------------------------------------------------------------------------
-  // Handshake Helper Functions
+
+  // Queue for expected outputs
+  exp_t exp_q[$];
+
+  // initial begin
+  //   exp_rec  = '{default:'0};
+  //   exp_comp = '{default:'0};
+  // end
+  //
+  //--------------------------------------------------------------------------------------------------------
+  // Drivers (Handshake Helper Functions)
   //--------------------------------------------------------------------------------------------------------
   task automatic drive_start(input logic [ID_W-1:0] id);
     begin
@@ -88,7 +95,7 @@ module tb_ev_timer_v1;
 
       // After handshake, update scoreboard
       tb_id_active[id] = 1'b1;
-      tb_start_ts[id]  = tb_cnt;
+      tb_start_ts[id]  = dut.cnt_q;
       $display("[%0t] START  id=%0d ts=%0d (valid_at_start==0 so ts accepted)", $time, id, tb_cnt);
 
       // Reset valid to 0 at next cycle
@@ -122,12 +129,16 @@ module tb_ev_timer_v1;
   endtask
 
   //--------------------------------------------------------------------------------------------------------
-  // Comparing DUT vs Queue Outputs
+  // Checker
   //--------------------------------------------------------------------------------------------------------
   always_ff @(posedge clk) begin
     if (out_valid) begin
       if (exp_q.size()==0) $fatal("ERROR: DUT produced no results!");
       exp_comp = exp_q.pop_front(); // Blocking fine because only temp variable
+
+      // sanity check of popped struct
+      $display("[%0t] POP exp: id=%0d start=%0d end=%0d delta=%0d",
+                $time, exp_comp.id, exp_comp.start_ts, exp_comp.end_ts, exp_comp.delta);
 
       // compare expected vs outputs individual fields
       if (out_id       !== exp_comp.id)       $fatal("ID mismatch: got %0d, exp %0d", out_id, exp_comp.id);
@@ -148,7 +159,7 @@ module tb_ev_timer_v1;
     // dumpfile if needed
     $dumpfile("tb_ev_timer_v1.vcd"); $dumpvars(0, tb_ev_timer_v1);
 
-    // reset
+    // reset for 4 clock cycles
     repeat (4) @(posedge clk);
     rst = 0;
     @(posedge clk);
