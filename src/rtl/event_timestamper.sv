@@ -91,16 +91,10 @@ module event_timestamper #(
   //--------------------------------------------------------------------------------------------------------
   // End Path Pipeline (out_valid Holds until out_ready)
   //--------------------------------------------------------------------------------------------------------
-  // pipeline registers
-  logic            end_fire_q;  // end_fire delayed 1 cycle
-  logic [ID_W-1:0] end_id_q;
-  logic [TS_W-1:0] end_ts_q;    // Timestamp at the end
-  logic [TS_W-1:0] start_ts_q;  // Fetched start timestamp
-
   // Output holding registers
-  logic            out_valid_q;
-  logic [ID_W-1:0] out_id_q;
-  logic [TS_W-1:0] out_start_q, out_end_q, out_ts_q;
+  logic                 out_valid_q;
+  logic [ID_W-1:0]      out_id_q;
+  logic [TS_W-1:0]      out_start_q, out_end_q, out_ts_q;
 
   assign out_valid    = out_valid_q;
   assign out_id       = out_id_q;
@@ -109,8 +103,15 @@ module event_timestamper #(
   assign out_ts       = out_ts_q;
 
   // Check output hold reg being full (1=reg empty, 0=reg not popped yet)
-  logic outq_can_accept;
+  // register also emptys when the data is popped this cycle (normal operation)
+  logic  outq_can_accept;
   assign outq_can_accept = (!out_valid_q) || (out_valid && out_ready);
+
+  // pipeline registers
+  logic                 end_fire_q;  // end_fire delayed 1 cycle
+  logic [ID_W-1:0]      end_id_q;
+  logic [TS_W-1:0]      end_ts_q;    // Timestamp at the end
+  logic [TS_W-1:0]      start_ts_q;  // Fetched start timestamp
 
   always_ff @(posedge clk) begin : end_pipeline
     if (rst) begin
