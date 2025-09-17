@@ -54,7 +54,7 @@ module event_timestamper #(
   end
 
   //--------------------------------------------------------------------------------------------------------
-  // Handshakes and Hazards
+  // Hazards
   //--------------------------------------------------------------------------------------------------------
   // Current scoreboard state @ ID request
   logic valid_at_start, valid_at_end;
@@ -65,31 +65,8 @@ module event_timestamper #(
   logic hazard_same_id;
   assign hazard_same_id = start_valid && end_valid && (start_id == end_id);
 
-  // NOTE: Minimal Handshake
-  // end_ready   -> requires the ID to be active AND destination to be ready
-  // start_ready -> blocks the reuse of an active ID and blocks same ID
-  //                when END fires
-  logic start_fire, end_fire;
-  assign end_ready    = valid_at_end      && out_ready;
-  assign end_fire     = end_valid         && end_ready;
-
-  assign start_ready  = (!valid_at_start) && !(hazard_same_id && end_fire);
-  assign start_fire   = start_valid       && start_ready;
-
-
   //--------------------------------------------------------------------------------------------------------
-  // Writing Into Scoreboard
-  //--------------------------------------------------------------------------------------------------------
-  // On start fire, keep current timestamp and ID active
-  always_ff @(posedge clk) begin : write_start_to_scoreboard
-    if (start_fire) begin
-      start_ts_mem[start_id] <= cnt_q;
-      valid_mem[start_id]    <= 1'b1;
-    end
-  end
-
-  //--------------------------------------------------------------------------------------------------------
-  // End Path Pipeline (out_valid Holds until out_ready)
+  // Handshakes and Output Hold Registers
   //--------------------------------------------------------------------------------------------------------
   // Output holding registers
   logic                 out_valid_q;
@@ -107,6 +84,35 @@ module event_timestamper #(
   logic  outq_can_accept;
   assign outq_can_accept = (!out_valid_q) || (out_valid && out_ready);
 
+  // === End Handshake ===
+  // Internal signal to notify cycle can END
+  logic  end_can_fire;
+  assign end_can_fire = valid_at_end      && outq_can_accept;
+
+  // Port level
+  assign end_ready    = end_can_fire;
+  assign end_fire     = end_valid         && end_ready;
+
+  // === Start Handshake ===
+  // start_ready -> block start if END wants to and it can fire
+  logic start_fire;
+  assign start_ready  = (!valid_at_start) && !(hazard_same_id && end_can_fire);
+  assign start_fire   = start_valid       && start_ready;
+
+  //--------------------------------------------------------------------------------------------------------
+  // Writing Into Scoreboard
+  //--------------------------------------------------------------------------------------------------------
+  // On start fire, keep current timestamp and ID active
+  always_ff @(posedge clk) begin : write_start_to_scoreboard
+    if (start_fire) begin
+      start_ts_mem[start_id] <= cnt_q;
+      valid_mem[start_id]    <= 1'b1;
+    end
+  end
+
+  //--------------------------------------------------------------------------------------------------------
+  // End Path Pipeline (out_valid Holds until out_ready)
+  //--------------------------------------------------------------------------------------------------------
   // pipeline registers
   logic                 end_fire_q;  // end_fire delayed 1 cycle
   logic [ID_W-1:0]      end_id_q;
@@ -130,20 +136,29 @@ module event_timestamper #(
     end
   end
 
-  // One cycle delay output
-  always_ff @(posedge clk) begin : cycle_delayed_output
+  // Output w/ out_valid held
+  always_ff @(posedge clk) begin : held_output
     if (rst) begin
-      out_valid    <= 1'b0;
-      out_id       <= '0;
-      out_start_ts <= '0;
-      out_end_ts   <= '0;
-      out_ts       <= '0;
+      out_valid     <= 1'b0;
+      out_id        <= '0;
+      out_start_ts  <= '0;
+      out_end_ts    <= '0;
+      out_ts        <= '0;
     end else begin
-      out_valid    <= end_fire_q;                     // NOTE: one cycle Pulse
-      out_id       <= end_id_q;
-      out_start_ts <= start_ts_q;
-      out_end_ts   <= end_ts_q;
-      out_ts       <= end_ts_q - start_ts_q;          // Mod subtraction with wrapping
+      // POP: Consumer took current registered output
+      if (out_valid && out_ready) begin
+        out_valid_q <= 1'b1;
+      end
+
+      // PUSH: New item in pipeline to load into holding output register
+      // Works because end_ready is gated by outq_can_accept
+      if (end_fire_q) begin
+        out_valid     <= 1'b1;                     // NOTE: Holding out_valid
+        out_id        <= end_id_q;
+        out_start_ts  <= start_ts_q;
+        out_end_ts    <= end_ts_q;
+        out_ts        <= end_ts_q - start_ts_q;
+      end
     end
   end
 endmodule
