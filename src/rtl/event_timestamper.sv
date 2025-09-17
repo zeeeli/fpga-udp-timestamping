@@ -34,8 +34,6 @@ module event_timestamper #(
     else     cnt_q <= cnt_q + 1'b1;
   end
 
-  // TODO: Scoreboard, handshakes, data pipelining, and outputs
-
   //--------------------------------------------------------------------------------------------------------
   // Scoreboard Storage
   //--------------------------------------------------------------------------------------------------------
@@ -91,13 +89,28 @@ module event_timestamper #(
   end
 
   //--------------------------------------------------------------------------------------------------------
-  // End Path Single Cycle Pipelining
+  // End Path Pipeline (out_valid Holds until out_ready)
   //--------------------------------------------------------------------------------------------------------
   // pipeline registers
   logic            end_fire_q;  // end_fire delayed 1 cycle
   logic [ID_W-1:0] end_id_q;
   logic [TS_W-1:0] end_ts_q;    // Timestamp at the end
   logic [TS_W-1:0] start_ts_q;  // Fetched start timestamp
+
+  // Output holding registers
+  logic            out_valid_q;
+  logic [ID_W-1:0] out_id_q;
+  logic [TS_W-1:0] out_start_q, out_end_q, out_ts_q;
+
+  assign out_valid    = out_valid_q;
+  assign out_id       = out_id_q;
+  assign out_start_ts = out_start_q;
+  assign out_end_ts   = out_end_q;
+  assign out_ts       = out_ts_q;
+
+  // Check output hold reg being full (1=reg empty, 0=reg not popped yet)
+  logic outq_can_accept;
+  assign outq_can_accept = (!out_valid_q) || (out_valid && out_ready);
 
   always_ff @(posedge clk) begin : end_pipeline
     if (rst) begin
