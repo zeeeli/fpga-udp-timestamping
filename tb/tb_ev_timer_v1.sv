@@ -45,19 +45,7 @@ module tb_ev_timer_v1;
     .out_start_ts(out_start_ts), .out_end_ts(out_end_ts),   .out_ts(out_delta)
   );
 
-  //--------------------------------------------------------------------------------------------------------
-  // Testbench Counter
-  //--------------------------------------------------------------------------------------------------------
-  logic [TS_W-1:0] tb_cnt;
-  always_ff @(posedge clk) begin : tb_counter
-    if (rst) begin
-      tb_cnt <= '0;
-    end else begin
-      tb_cnt <= dut.cnt_q;
-    end
-  end
-
-  //--------------------------------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------------------------------------
   // Misc. signals
   //--------------------------------------------------------------------------------------------------------
   // For post collision-hazard test (where queue is empty)
@@ -88,16 +76,6 @@ module tb_ev_timer_v1;
   initial begin
     foreach (tb_id_active[i]) tb_id_active[i] = 1'b0;
     foreach (tb_start_ts[i])  tb_start_ts[i]  =   '0;
-    // exp_comp                                  =   '0;
-    // exp_rec                                   =   '0;
-    // tb_cnt                                    =    0;
-    // start_ready                               =    0;
-    // end_ready                                 =    0;
-    // out_valid                                 =    0;
-    // out_id                                    =   '0;
-    // out_start_ts                              =   '0;
-    // out_end_ts                                =   '0;
-    // out_delta                                 =   '0;
   end
 
   //--------------------------------------------------------------------------------------------------------
