@@ -42,7 +42,7 @@ module tb_ev_timer_v1;
     .start_valid(start_valid),   .start_ready(start_ready), .start_id(start_id),
     .end_valid(end_valid),       .end_ready(end_ready),     .end_id(end_id),
     .out_valid(out_valid),       .out_ready(out_ready),     .out_id(out_id),
-    .out_start_ts(out_start_ts), .out_end_ts(out_end_ts),   .out_ts(out_ts)
+    .out_start_ts(out_start_ts), .out_end_ts(out_end_ts),   .out_ts(out_delta)
   );
 
   //--------------------------------------------------------------------------------------------------------
@@ -62,14 +62,10 @@ module tb_ev_timer_v1;
   //--------------------------------------------------------------------------------------------------------
   typedef struct packed {
     logic [ID_W-1:0] id;
-    logic [ID_W-1:0] start_ts;
-    logic [ID_W-1:0] end_ts;
-    logic [ID_W-1:0] delta;
+    logic [TS_W-1:0] start_ts;
+    logic [TS_W-1:0] end_ts;
+    logic [TS_W-1:0] delta;
   } exp_t;
-
-  // RAM
-  logic            tb_id_active [2**ID_W];
-  logic [TS_W-1:0] tb_start_ts  [2**ID_W];
 
   exp_t exp_rec;  // for handshake task (xvlog likes it outside task scope)
   exp_t exp_comp; // for DUT vs expected comparison
@@ -77,11 +73,26 @@ module tb_ev_timer_v1;
   // Queue for expected outputs
   exp_t exp_q[$];
 
-  // initial begin
-  //   exp_rec  = '{default:'0};
-  //   exp_comp = '{default:'0};
-  // end
-  //
+  // RAM
+  logic            tb_id_active [2**ID_W];
+  logic [TS_W-1:0] tb_start_ts  [2**ID_W];
+
+  // Initializing values
+  initial begin
+    foreach (tb_id_active[i]) tb_id_active[i] = 1'b0;
+    foreach (tb_start_ts[i])  tb_start_ts[i]  =   '0;
+    foreach (exp_rec[i])      exp_rec[i]      =   '0;
+    foreach (exp_comp[i])     exp_comp[i]     =   '0;
+    tb_cnt                                    =    0;
+    start_ready                               =    0;
+    end_ready                                 =    0;
+    out_valid                                 =    0;
+    out_id                                    =   '0;
+    out_start_ts                              =   '0;
+    out_end_ts                                =   '0;
+    out_delta                                 =   '0;
+  end
+
   //--------------------------------------------------------------------------------------------------------
   // Drivers (Handshake Helper Functions)
   //--------------------------------------------------------------------------------------------------------
@@ -96,7 +107,7 @@ module tb_ev_timer_v1;
       // After handshake, update scoreboard
       tb_id_active[id] = 1'b1;
       tb_start_ts[id]  = dut.cnt_q;
-      $display("[%0t] START  id=%0d ts=%0d (valid_at_start==0 so ts accepted)", $time, id, tb_cnt);
+      $display("[%0t] START  id=%0d ts=%0d (valid_at_start==0 so ts accepted)", $time, id, dut.cnt_q);
 
       // Reset valid to 0 at next cycle
       start_valid = 1'b0;
@@ -113,11 +124,16 @@ module tb_ev_timer_v1;
       do @(posedge clk); while (!end_ready);
 
       // After handshake, compute output (struct)
+      exp_rec          = '{default:'0};
       exp_rec.id       = id;
-      exp_rec.end_ts   = tb_cnt;  // Timestamp at end
       exp_rec.start_ts = tb_start_ts[id];  // Pull start from scoreboard
+      exp_rec.end_ts   = dut.cnt_q;  // Timestamp at end
       exp_rec.delta    = exp_rec.end_ts - exp_rec.start_ts;
+      $display("[%0t] PUSH exp: id=%0d start=%0d end=%0d delta=%0d",
+                $time, exp_rec.id, exp_rec.start_ts, exp_rec.end_ts, exp_rec.delta);
+
       exp_q.push_back(exp_rec);   // push expected result onto queue
+
       tb_id_active[id] = 0;   // clear id from scoreboard
       $display("[%0t] END    id=%0d  start=%0d end=%0d delta=%0d  (result expected next cycle)",
                $time, id, exp_rec.start_ts, exp_rec.end_ts, exp_rec.delta);
@@ -185,7 +201,7 @@ module tb_ev_timer_v1;
     end
     end_valid = 0;
     do @(posedge clk); while (!start_ready);  // start succeeds after end clears
-    tb_id_active[5] = 1; tb_start_ts[5] = tb_cnt; start_valid = 0;
+    tb_id_active[5] = 1; tb_start_ts[5] = dut.cnt_q; start_valid = 0;
     repeat (4) @(posedge clk); drive_end(5);
 
     repeat(10) @(posedge clk);
