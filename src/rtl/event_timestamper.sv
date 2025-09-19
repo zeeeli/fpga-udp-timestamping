@@ -79,6 +79,7 @@ module event_timestamper #(
   assign out_end_ts   = out_end_q;
   assign out_ts       = out_ts_q;
 
+  // === Checking for backpressure ===
   // Check output hold reg being full (1=reg empty, 0=reg not popped yet)
   // register also emptys when the data is popped this cycle (normal operation)
   logic  outq_can_accept;
@@ -139,25 +140,25 @@ module event_timestamper #(
   // Output w/ out_valid held
   always_ff @(posedge clk) begin : held_output
     if (rst) begin
-      out_valid     <= 1'b0;
-      out_id        <= '0;
-      out_start_ts  <= '0;
-      out_end_ts    <= '0;
-      out_ts        <= '0;
+      out_valid_q   <= 1'b0;
+      out_id_q      <= '0;
+      out_start_q   <= '0;
+      out_end_q     <= '0;
+      out_ts_q      <= '0;
     end else begin
       // POP: Consumer took current registered output
       if (out_valid && out_ready) begin
-        out_valid_q <= 1'b1;
+        out_valid_q <= 1'b0;
       end
 
       // PUSH: New item in pipeline to load into holding output register
       // Works because end_ready is gated by outq_can_accept
       if (end_fire_q) begin
-        out_valid     <= 1'b1;                     // NOTE: Holding out_valid
-        out_id        <= end_id_q;
-        out_start_ts  <= start_ts_q;
-        out_end_ts    <= end_ts_q;
-        out_ts        <= end_ts_q - start_ts_q;
+        out_valid_q <= 1'b1;                     // NOTE: Holding out_valid
+        out_id_q    <= end_id_q;
+        out_start_q <= start_ts_q;
+        out_end_q   <= end_ts_q;
+        out_ts_q    <= end_ts_q - start_ts_q;
       end
     end
   end
