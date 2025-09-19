@@ -97,7 +97,7 @@ module event_timestamper #(
   // === Start Handshake ===
   // start_ready -> block start if END wants to and it can fire
   logic start_fire;
-  assign start_ready  = (!valid_at_start) && !(hazard_same_id && end_can_fire);
+  assign start_ready  = (!valid_at_start) && !(hazard_same_id && end_valid && end_can_fire);
   assign start_fire   = start_valid       && start_ready;
 
   //--------------------------------------------------------------------------------------------------------
