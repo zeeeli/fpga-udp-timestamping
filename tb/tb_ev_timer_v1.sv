@@ -27,11 +27,11 @@ module tb_ev_timer_v1;
   // Clock and Reset
   //--------------------------------------------------------------------------------------------------------
   // 200 MHz Clock => 5ns
-  logic clk = 0;
+  logic       clk = 0;
   always #2.5 clk = ~clk;
 
   // Reset (active high)
-  logic rst = 1;
+  logic       rst = 1;
 
   //--------------------------------------------------------------------------------------------------------
   // Instantiate DUT
@@ -42,7 +42,7 @@ module tb_ev_timer_v1;
     .start_valid(start_valid),   .start_ready(start_ready), .start_id(start_id),
     .end_valid(end_valid),       .end_ready(end_ready),     .end_id(end_id),
     .out_valid(out_valid),       .out_ready(out_ready),     .out_id(out_id),
-    .out_start_ts(out_start_ts), .out_end_ts(out_end_ts),   .out_ts(out_delta)
+    .out_start_ts(out_start_ts), .out_end_ts(out_end_ts),   .out_delta(out_delta)
   );
 
   //--------------------------------------------------------------------------------------------------------
@@ -51,35 +51,6 @@ module tb_ev_timer_v1;
   // For post collision-hazard test (where queue is empty)
   bit              skip_one_output;
   logic [ID_W-1:0] skip_id;
-
-  //--------------------------------------------------------------------------------------------------------
-  // Backpressure Generator (To test out_ready holding)
-  //--------------------------------------------------------------------------------------------------------
-  // always_ff @(posedge clk) begin : gen_backpressure
-  //   if (!rst) begin
-  //     out_ready <= ($urandom_range(0,4) != 0);  // 80% chance of being high
-  //   end
-  // end
-  // bit bp_enable;
-  // always_ff @(posedge clk) begin : gen_backpressure
-  //   if (rst) begin
-  //     out_ready <= 1'b0;
-  //     bp_enable <= 1'b0;
-  //   end else begin
-  //     if (!bp_enable) begin
-  //       // enable only when there's > 0 expected items to pop
-  //       if (exp_q.size() != 0) begin
-  //         bp_enable <= 1'b1;
-  //         out_ready <= 1'b1;          // first handshake can occur now
-  //       end else begin
-  //         out_ready <= 1'b0;          // Hold low until queue has struct
-  //       end
-  //     end else begin
-  //       // Randomize out_ready when Backpressure is active
-  //       out_ready <= ($urandom_range(0,4) != 0);    // 80% chance of being high
-  //     end
-  //   end
-  // end
 
   //--------------------------------------------------------------------------------------------------------
   // Testbench Scoreboard and RAM
@@ -91,8 +62,8 @@ module tb_ev_timer_v1;
     logic [TS_W-1:0] delta;
   } exp_t;
 
-  exp_t exp_rec;  // for handshake task (xvlog likes it outside task scope)
-  exp_t exp_comp; // for DUT vs expected comparison
+  exp_t exp_push;  // for handshake task (xvlog likes it outside task scope)
+  exp_t exp_pop; // for DUT vs expected comparison
 
   // Queue for expected outputs
   exp_t exp_q[$];
@@ -138,19 +109,19 @@ module tb_ev_timer_v1;
       do @(posedge clk); while (!end_ready);
 
       // After handshake, compute output (struct)
-      exp_rec          = '{default:'0};
-      exp_rec.id       = id;
-      exp_rec.start_ts = tb_start_ts[id];  // Pull start from scoreboard
-      exp_rec.end_ts   = dut.cnt_q;  // Timestamp at end
-      exp_rec.delta    = exp_rec.end_ts - exp_rec.start_ts;
+      exp_push          = '{default:'0};
+      exp_push.id       = id;
+      exp_push.start_ts = tb_start_ts[id];  // Pull start from scoreboard
+      exp_push.end_ts   = dut.cnt_q;  // Timestamp at end
+      exp_push.delta    = exp_push.end_ts - exp_push.start_ts;
       $display("[%0t] PUSH exp: id=%0d start=%0d end=%0d delta=%0d",
-                $time, exp_rec.id, exp_rec.start_ts, exp_rec.end_ts, exp_rec.delta);
+                $time, exp_push.id, exp_push.start_ts, exp_push.end_ts, exp_push.delta);
 
-      exp_q.push_back(exp_rec);   // push expected result onto queue
+      exp_q.push_back(exp_push);   // push expected result onto queue
 
       tb_id_active[id] = 0;   // clear id from scoreboard
       $display("[%0t] END    id=%0d  start=%0d end=%0d delta=%0d  (result expected next cycle)",
-               $time, id, exp_rec.start_ts, exp_rec.end_ts, exp_rec.delta);
+               $time, id, exp_push.start_ts, exp_push.end_ts, exp_push.delta);
 
       // Reset valid to 0 at next cycle
       end_valid = 1'b0;
@@ -173,17 +144,17 @@ module tb_ev_timer_v1;
         skip_one_output <= 1'b0;
       end else begin
         if (exp_q.size() == 0) $fatal("ERROR: DUT produced no results!");
-        exp_comp = exp_q.pop_front();  // Blocking fine because only temp variable
+        exp_pop = exp_q.pop_front();  // Blocking fine because only temp variable
 
         // sanity check of popped struct
-        $display("[%0t] POP exp: id=%0d start=%0d end=%0d delta=%0d", $time, exp_comp.id,
-                 exp_comp.start_ts, exp_comp.end_ts, exp_comp.delta);
+        $display("[%0t] POP exp: id=%0d start=%0d end=%0d delta=%0d", $time, exp_pop.id,
+                 exp_pop.start_ts, exp_pop.end_ts, exp_pop.delta);
 
         // compare expected vs outputs individual fields
-        if (out_id       !== exp_comp.id)       $fatal("ID mismatch: got %0d, exp %0d", out_id, exp_comp.id);
-        if (out_start_ts !== exp_comp.start_ts) $fatal("start_ts mismatch: got %0d, exp %0d", out_start_ts, exp_comp.start_ts);
-        if (out_end_ts   !== exp_comp.end_ts)   $fatal("end_ts mismatch: got %0d, exp %0d", out_end_ts, exp_comp.end_ts);
-        if (out_delta    !== exp_comp.delta)    $fatal("delta mismatch: got %0d, exp %0d", out_delta, exp_comp.delta);
+        if (out_id       !== exp_pop.id)       $fatal("ID mismatch: got %0d, exp %0d", out_id, exp_pop.id);
+        if (out_start_ts !== exp_pop.start_ts) $fatal("start_ts mismatch: got %0d, exp %0d", out_start_ts, exp_pop.start_ts);
+        if (out_end_ts   !== exp_pop.end_ts)   $fatal("end_ts mismatch: got %0d, exp %0d", out_end_ts, exp_pop.end_ts);
+        if (out_delta    !== exp_pop.delta)    $fatal("delta mismatch: got %0d, exp %0d", out_delta, exp_pop.delta);
         $display("[%0t] OUT    id=%0d  start=%0d end=%0d delta=%0d  (OK)", $time, out_id,
                  out_start_ts, out_end_ts, out_delta);
       end
@@ -202,7 +173,7 @@ module tb_ev_timer_v1;
 
   always @(negedge clk) begin
     if (rst) out_ready <= 1'b0;
-    else out_ready <= next_ready;  // decide next_ready anywhere you like
+    else     out_ready <= next_ready;  // decide next_ready anywhere you like
   end
 
   //--------------------------------------------------------------------------------------------------------

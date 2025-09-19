@@ -3,8 +3,8 @@ module event_timestamper #(
     parameter int unsigned ID_W = 4,      // Width of event IDs
     parameter int unsigned TS_W = 64      // Width of timestamp counter
 ) (
-    input logic clk,
-    input logic rst,
+    input logic             clk,
+    input logic             rst,
 
     // Event Start
     input  logic            start_valid,  // Pulse: High while start is pending
@@ -22,7 +22,7 @@ module event_timestamper #(
     output logic [ID_W-1:0] out_id,       // Hold:  ID of event
     output logic [TS_W-1:0] out_start_ts, // Hold:  Timestamp caputred at the start
     output logic [TS_W-1:0] out_end_ts,   // Hold:  Timestamp caputred at the end
-    output logic [TS_W-1:0] out_ts        // Hold:  True timestamp (end - start)
+    output logic [TS_W-1:0] out_delta        // Hold:  True timestamp (end - start)
 );
 
   //--------------------------------------------------------------------------------------------------------
@@ -57,12 +57,12 @@ module event_timestamper #(
   // Hazards
   //--------------------------------------------------------------------------------------------------------
   // Current scoreboard state @ ID request
-  logic valid_at_start, valid_at_end;
+  logic  valid_at_start, valid_at_end;
   assign valid_at_start = valid_mem[start_id];    // Check if ID already in flight
   assign valid_at_end   = valid_mem[end_id];      // Check if ID has already started
 
   // Same-cycle and Same-ID Hazard
-  logic hazard_same_id;
+  logic  hazard_same_id;
   assign hazard_same_id = start_valid && end_valid && (start_id == end_id);
 
   //--------------------------------------------------------------------------------------------------------
@@ -71,13 +71,13 @@ module event_timestamper #(
   // Output holding registers
   logic                 out_valid_q;
   logic [ID_W-1:0]      out_id_q;
-  logic [TS_W-1:0]      out_start_q, out_end_q, out_ts_q;
+  logic [TS_W-1:0]      out_start_q, out_end_q, out_delta_q;
 
   assign out_valid    = out_valid_q;
   assign out_id       = out_id_q;
   assign out_start_ts = out_start_q;
   assign out_end_ts   = out_end_q;
-  assign out_ts       = out_ts_q;
+  assign out_delta    = out_delta_q;
 
   // === Checking for backpressure ===
   // Check output hold reg being full (1=reg empty, 0=reg not popped yet)
@@ -96,7 +96,7 @@ module event_timestamper #(
 
   // === Start Handshake ===
   // start_ready -> block start if END wants to and it can fire
-  logic start_fire;
+  logic  start_fire;
   assign start_ready  = (!valid_at_start) && !(hazard_same_id && end_valid && end_can_fire);
   assign start_fire   = start_valid       && start_ready;
 
@@ -144,7 +144,7 @@ module event_timestamper #(
       out_id_q      <= '0;
       out_start_q   <= '0;
       out_end_q     <= '0;
-      out_ts_q      <= '0;
+      out_delta_q   <= '0;
     end else begin
       // POP: Consumer took current registered output
       if (out_valid && out_ready) begin
@@ -158,7 +158,7 @@ module event_timestamper #(
         out_id_q    <= end_id_q;
         out_start_q <= start_ts_q;
         out_end_q   <= end_ts_q;
-        out_ts_q    <= end_ts_q - start_ts_q;
+        out_delta_q <= end_ts_q - start_ts_q;
       end
     end
   end
