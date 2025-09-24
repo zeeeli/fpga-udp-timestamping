@@ -1,0 +1,19 @@
+# Vivado / XSim noise
+*.jou
+*.log
+*.str
+*.rpt
+*.dcp
+*.wdb
+*.pb
+*.zip
+*.xpr
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+.Xil/
+
+# Our outputs
+/build/
