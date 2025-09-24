@@ -14,6 +14,6 @@
 *.runs/
 *.sim/
 .Xil/
-
+*.vcd
 # Our outputs
 /build/
