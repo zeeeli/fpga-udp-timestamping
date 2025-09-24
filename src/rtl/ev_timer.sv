@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-module event_timestamper #(
+module ev_timer #(
     parameter int unsigned ID_W = 4,      // Width of event IDs
     parameter int unsigned TS_W = 64      // Width of timestamp counter
 ) (
@@ -22,7 +22,7 @@ module event_timestamper #(
     output logic [ID_W-1:0] out_id,       // Hold:  ID of event
     output logic [TS_W-1:0] out_start_ts, // Hold:  Timestamp caputred at the start
     output logic [TS_W-1:0] out_end_ts,   // Hold:  Timestamp caputred at the end
-    output logic [TS_W-1:0] out_delta        // Hold:  True timestamp (end - start)
+    output logic [TS_W-1:0] out_delta     // Hold:  True timestamp (end - start)
 );
 
   //--------------------------------------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 // hazard control
 `timescale 1ns / 1ps
 
-module tb_ev_timer_v1;
+module tb_ev_timer;
   //--------------------------------------------------------------------------------------------------------
   // Parameters
   //--------------------------------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ module tb_ev_timer_v1;
   //--------------------------------------------------------------------------------------------------------
   // Instantiate DUT
   //--------------------------------------------------------------------------------------------------------
-  event_timestamper #(.ID_W(ID_W), .TS_W(TS_W)) dut (
+  ev_timer #(.ID_W(ID_W), .TS_W(TS_W)) dut (
     .clk(clk),
     .rst(rst),
     .start_valid(start_valid),   .start_ready(start_ready), .start_id(start_id),
@@ -186,7 +186,7 @@ module tb_ev_timer_v1;
     // out_ready   = 1; // NOTE: Commented so out_ready holds not pulse
 
     // dumpfile if needed
-    $dumpfile("tb_ev_timer_v1.vcd"); $dumpvars(0, tb_ev_timer_v1);
+    $dumpfile("tb_ev_timer.vcd"); $dumpvars(0, tb_ev_timer);
 
     // reset for 4 clock cycles
     repeat (4) @(posedge clk);
