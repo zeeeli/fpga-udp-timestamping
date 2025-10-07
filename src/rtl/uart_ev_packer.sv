@@ -46,7 +46,7 @@ module uart_ev_packer #(
     C3,     // Thirs comma delimiter
     DELTA,
     NL      // New line escape char '\n'
-  } state_t;
+} state_t;
 
   state_t state_reg, state_next;
 
@@ -61,7 +61,45 @@ module uart_ev_packer #(
   logic can_write = ~fifo_full;
 
   //--------------------------------------------------------------------------------------------------------
-  // TODO: Helper Functions
+  // Helper Functions
   //--------------------------------------------------------------------------------------------------------
-   
+  // Turn a 4-bit nibble (1 hex digit) into ASCII character
+  // Example: ID = 16'h12AB =>
+  //          ID[3] = 1 = 8'h31 -> char('1')
+  //          ID[2] = 2 = 8'h32 -> char('2')
+  //          ID[1] = A = 8'h41 -> char('A')
+  //          ID[0] = B = 8'h42 -> char('B')
+  function automatic [7:0] nib2hex(input logic [3:0] n);
+    if (n<10) begin
+      hex8 = 8'h30 + n;          // Numbers => 0,1,2,...9
+    end else begin
+      hex8 = 8'h41 + (n-10);     // Letters => A, B, C,...
+    end
+  endfunction
+
+  // Extracting 4-bit Nibbles from ID from MSB -> LSB (left -> right)
+  // idx*4 is the bit offset of the nibble (eg. idx=3 => shift by 12)
+  // w >> (idx*4) => shifts the nibble to extract to bit[3:0]
+  // & 4'hF       => masks all other bits but bit[3:0]
+  // Example: w = 16'h12AB
+  //          idx=3 -> Shift by 12 -> 0x0001 -> nibble(1)
+  //          idx=2 -> Shift by 8  -> 0x0012 -> nibble(2)
+  //          idx=1 -> Shift by 4  -> 0x012A -> nibble(A)
+  //          idx=0 -> Shift by 0  -> 0x12AB -> nibble(B)
+  function automatic [3:0] pickNib16(input logic [15:0] w, input logic [3:0] idx);
+    pickNib16 = (w >> (idx*4)) & 4'hF;
+  endfunction
+
+  // Similar to pickNib16 but for 64 bit (Timestamps)
+  function automatic [3:0] pickNib64(input logic [63:0] w, input logic [3:0] idx);
+    pickNib64 = (w >> (idx*4)) & 4'hF;
+  endfunction
+
+  // Hex for comma and linebreak
+  localparam logic [7:0] COMMA = 8'h2C;
+  localparam logic [7:0] NL    = 8'h0A;
+
+  //--------------------------------------------------------------------------------------------------------
+  // TODO: FSMD Registers
+  //--------------------------------------------------------------------------------------------------------
 endmodule
