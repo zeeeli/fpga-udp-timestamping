@@ -6,8 +6,8 @@ module uart_ev_packer #(
     parameter int unsigned TS_W = 64,
     parameter int unsigned ID_W = 16
 ) (
-    input logic clk,
-    input logic rst,
+    input logic             clk,
+    input logic             rst,
 
     // Event ports
     input  logic            ev_valid,
@@ -15,9 +15,13 @@ module uart_ev_packer #(
     input  logic [ID_W-1:0] ev_id,
     input  logic [TS_W-1:0] ev_start,
     input  logic [TS_W-1:0] ev_end,
-    input  logic [TS_W-1:0] ev_delta
+    input  logic [TS_W-1:0] ev_delta,
 
-    // TODO: Synch FIFO Write ports
+    // Synch FIFO Write ports
+    output logic            fifo_wr_en,      // Pules: to write tp fifo
+    output logic [     7:0] fifo_din,
+    input  logic            fifo_full,       // Fifo backpressure handler
+    input  logic            fifo_prog_full   // FIFO near full (reserve 56 bytes)
 );
 
   //--------------------------------------------------------------------------------------------------------
@@ -46,4 +50,18 @@ module uart_ev_packer #(
 
   state_t state_reg, state_next;
 
+  // ASCII Char output register
+  logic [7:0] char_d, char_q;
+
+  // Nibble counter to index each hex digit from MSB -> LSB (left to right)
+  // ie. 4 nibbles for ID
+  logic [3:0] nib_q, nib_d;
+
+  // FIFO handshake => write only when FIFO has space
+  logic can_write = ~fifo_full;
+
+  //--------------------------------------------------------------------------------------------------------
+  // TODO: Helper Functions
+  //--------------------------------------------------------------------------------------------------------
+   
 endmodule
