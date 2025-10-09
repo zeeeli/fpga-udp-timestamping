@@ -97,9 +97,153 @@ module uart_ev_packer #(
 
   // Hex for comma and linebreak
   localparam logic [7:0] COMMA = 8'h2C;
-  localparam logic [7:0] NL    = 8'h0A;
+  localparam logic [7:0] NEWLINE    = 8'h0A;
 
   //--------------------------------------------------------------------------------------------------------
-  // TODO: FSMD Registers
+  // FSMD Registers
   //--------------------------------------------------------------------------------------------------------
+  always_ff @(posedge clk) begin : state_registers
+    if (rst) begin
+      state_reg <= IDLE;
+      nib_q     <= '0;
+      id_q      <= '0;
+      start_q   <= '0;
+      end_q     <= '0;
+      delta_q   <= '0;
+      char_q    <= 8'h00;
+    end else begin
+      state_reg <= state_next;
+      nib_q     <= nib_d;
+      char_q    <= char_d;
+      // Latch the record once when ev handshake occurs
+      if (state_reg == IDLE && ev_valid && ev_ready) begin
+        id_q    <= ev_id;
+        start_q <= ev_start;
+        end_q   <= ev_end;
+        delta_q <= ev_delta;
+      end
+    end
+  end
+
+  //--------------------------------------------------------------------------------------------------------
+  // Next-state Logic
+  //--------------------------------------------------------------------------------------------------------
+  always_comb begin : next_state_logic
+    // default
+    state_next = state_reg;
+    nib_d      = nib_q;
+    char_d     = char_q;
+
+    // We dont write to FIFO by default
+    fifo_wr_en = 1'b0;
+    fifo_din   = char_q;
+
+    case (state_reg)
+      // Handshake event then initialize hex index nibble
+      IDLE: begin
+        if (ev_valid && ev_ready) begin
+          state_next = IDLE;
+          nib_d      = 4'd3; // MSB of hex index
+        end
+      end
+
+      ID: begin
+        char_d = nib2hex(pickNib16(id_q , nib_q));  // Convert ID nibble into Hex char for ASCII output
+        // Write ID char to FIFO
+        if (can_write) begin
+          fifo_wr_en = 1'b1;
+          fifo_din   = char_d;
+          if (nib_q == 4'd0) begin  // whole ID chars has been stored
+            state_next = C1;
+          end else begin
+            nib_d = nib_q - 1;
+          end
+        end
+      end
+
+      C1: begin
+        char_d = COMMA;
+        if (can_write) begin
+          fifo_wr_en = 1'b1;
+          fifo_din   = char_d;
+          state_next = START;
+          nib_d      = 4'd15;   // Preparing nibble idx for TS (16 nibbles in 64 bits)
+        end
+      end
+
+      START: begin
+        char_d = nib2hex(pickNib64(start_q, nib_q));
+        if (can_write) begin
+          fifo_wr_en = 1'd1;
+          fifo_din   = char_d;
+          if (nib_q == 4'd0) begin
+            state_next = C2;
+          end else begin
+            nib_d    = nib_q - 1;
+          end
+        end
+      end
+
+      C2: begin
+        char_d = COMMA;
+        if (can_write) begin
+          fifo_wr_en = 1'b1;
+          fifo_din   = char_d;
+          state_next = END;
+          nib_d      = 4'd15;
+        end
+      end
+
+      END: begin
+        char_d = nib2hex(pickNib64(end_q, nib_q));
+        if (can_write) begin
+          fifo_wr_en = 1'd1;
+          fifo_din   = char_d;
+          if (nib_q == 4'd0) begin
+            state_next = C3;
+          end else begin
+            nib_d    = nib_q - 1;
+          end
+        end
+      end
+
+      C3: begin
+        char_d = COMMA;
+        if (can_write) begin
+          fifo_wr_en = 1'b1;
+          fifo_din   = char_d;
+          state_next = DELTA;
+          nib_d      = 4'd15;
+        end
+      end
+
+      DELTA: begin
+        char_d = nib2hex(pickNib64(delta_q, nib_q));
+        if (can_write) begin
+          fifo_wr_en = 1'd1;
+          fifo_din   = char_d;
+          if (nib_q == 4'd0) begin
+            state_next = NL;
+          end else begin
+            nib_d    = nib_q - 1;
+          end
+        end
+      end
+
+      NL: begin
+        char_d = NEWLINE;
+        if (can_write) begin
+          fifo_wr_en = 1'b1;
+          fifo_din   = char_d;
+          state_next = IDLE;
+        end
+      end
+      default : state_next = IDLE;
+    endcase
+  end
+
+  //--------------------------------------------------------------------------------------------------------
+  // Output Logic
+  //--------------------------------------------------------------------------------------------------------
+  assign ev_ready = (state_reg == IDLE) && ~fifo_prog_full;
 endmodule
