@@ -2,7 +2,7 @@
 // into FIFO
 //  => (ID(4 bytes), ',', START_TS(16), ',', END(16), ',', DELTA(16),'\n')
 //  => comma delimiter and line break escape char are included in packet
-module uart_ev_packer #(
+module logger_ev_packer#(
     parameter int unsigned TS_W = 64,
     parameter int unsigned ID_W = 16
 ) (
