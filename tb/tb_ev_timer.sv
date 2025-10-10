@@ -36,7 +36,7 @@ module tb_ev_timer;
   //--------------------------------------------------------------------------------------------------------
   // Instantiate DUT
   //--------------------------------------------------------------------------------------------------------
-  ev_timer #(.ID_W(ID_W), .TS_W(TS_W)) dut (
+  top_ev_timer #(.ID_W(ID_W), .TS_W(TS_W)) dut (
     .clk(clk),
     .rst(rst),
     .start_valid(start_valid),   .start_ready(start_ready), .start_id(start_id),
