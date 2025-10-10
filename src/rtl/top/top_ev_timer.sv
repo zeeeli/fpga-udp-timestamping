@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
-module ev_timer #(
-    parameter int unsigned ID_W = 4,      // Width of event IDs
+module top_ev_timer #(
+    parameter int unsigned ID_W = 16,     // Width of event IDs
     parameter int unsigned TS_W = 64      // Width of timestamp counter
 ) (
     input logic             clk,

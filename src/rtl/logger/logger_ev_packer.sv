@@ -62,6 +62,8 @@ module logger_ev_packer#(
 
   //--------------------------------------------------------------------------------------------------------
   // Helper Functions
+  // TODO: parameterize these: I'm currently assuming the data width to be 64
+  // and ID to be 16
   //--------------------------------------------------------------------------------------------------------
   // Turn a 4-bit nibble (1 hex digit) into ASCII character
   // Example: ID = 16'h12AB =>
