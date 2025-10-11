@@ -30,7 +30,6 @@ module logger_fifo_xpm #(
   ) u_fifo (
       .rst        (rst),
       .wr_clk     (clk),
-      .rd_clk     (clk),
       .din        (din),
       .wr_en      (wr_en),
       .full       (full),

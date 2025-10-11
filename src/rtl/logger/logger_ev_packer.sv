@@ -73,9 +73,9 @@ module logger_ev_packer#(
   //          ID[0] = B = 8'h42 -> char('B')
   function automatic [7:0] nib2hex(input logic [3:0] n);
     if (n<10) begin
-      hex8 = 8'h30 + n;          // Numbers => 0,1,2,...9
+      nib2hex = 8'h30 + n;          // Numbers => 0,1,2,...9
     end else begin
-      hex8 = 8'h41 + (n-10);     // Letters => A, B, C,...
+      nib2hex = 8'h41 + (n-10);     // Letters => A, B, C,...
     end
   endfunction
 

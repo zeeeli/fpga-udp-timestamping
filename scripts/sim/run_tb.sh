@@ -31,7 +31,7 @@ xvlog -sv $(find src/rtl -type f \( -name '*.sv' -o -name '*.v' \)) \
   $(find tb -type f \( -name '*.sv' -o -name '*.v' \))
 
 # Elaborate with debug info so waves work
-xelab "$TB_TOP" -s sim_snapshot -timescale 1ps/1ps -debug typical
+xelab "$TB_TOP" -s sim_snapshot -timescale 1ps/1ps -debug typical -L xpm
 
 if ((GUI)); then
   # GUI mode: optionally preload a .wcfg layout
