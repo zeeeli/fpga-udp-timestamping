@@ -58,7 +58,7 @@ module logger_ev_packer#(
   logic [3:0] nib_q, nib_d;
 
   // FIFO handshake => write only when FIFO has space
-  logic can_write = ~fifo_full;
+  wire can_write = (fifo_full == 1'b0); // NOTE: can_write was not a live signal (needed to be wire)
 
   //--------------------------------------------------------------------------------------------------------
   // Helper Functions
@@ -144,7 +144,7 @@ module logger_ev_packer#(
       // Handshake event then initialize hex index nibble
       IDLE: begin
         if (ev_valid && ev_ready) begin
-          state_next = IDLE;
+          state_next = ID;
           nib_d      = 4'd3; // MSB of hex index
         end
       end
