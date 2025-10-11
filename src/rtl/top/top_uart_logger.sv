@@ -18,6 +18,11 @@ module top_uart_logger #(
     output logic tx
 );
 
+  // TODO: Parametrize everything
+  localparam int ID_NIB     = (ID_W + 3) / 4;
+  localparam int TS_NIB     = (TS_W + 3) / 4;
+  localparam int LINE_BYTES = ID_NIB + 3*TS_NIB + 4; // ID Bytes + 3 TS Bytes + 3 commas + '\n'
+
   //--------------------------------------------------------------------------------------------------------
   // Internal Registers
   //--------------------------------------------------------------------------------------------------------
@@ -33,6 +38,10 @@ module top_uart_logger #(
   logic [7:0] tx_data;
   logic       tx_ready;
   logic       fifo_empty;
+
+  // Fifo busy flags + a gated rd_en
+  logic wr_busy, rd_busy;
+  wire  fifo_ready = ~wr_busy & ~rd_busy;
 
   //--------------------------------------------------------------------------------------------------------
   // Packer -> FIFO
@@ -56,23 +65,28 @@ module top_uart_logger #(
   );
 
   logger_fifo_xpm #(
-      .DEPTH(256)
+      .DEPTH(256),
+      .PROG_FULL_THRESH(256 - LINE_BYTES),
+      .FWFT(1)
   ) u_lfifo (
-      .clk      (clk),
-      .rst      (rst),
-      .wr_en    (pack_wr_en),
-      .din      (pack_din),
-      .full     (fifo_full),
-      .prog_full(fifo_pfull),
-      .rd_en    (tx_ready & ~fifo_empty),
-      .dout     (tx_data),
-      .empty    (fifo_empty)
+      .clk        (clk),
+      .rst        (rst),
+      .wr_en      (pack_wr_en),
+      .din        (pack_din),
+      .full       (fifo_full),
+      .prog_full  (fifo_pfull),
+      .rd_en      (tx_ready & ~fifo_empty),
+      .dout       (tx_data),
+      .empty      (fifo_empty),
+      .wr_rst_busy(wr_busy),
+      .rd_rst_busy(rd_busy)
   );
+
+  assign tx_valid  = fifo_ready ? ~fifo_empty : 1'b0;
 
   //--------------------------------------------------------------------------------------------------------
   // FIFO -> UART
   //--------------------------------------------------------------------------------------------------------
-  assign tx_valid = ~fifo_empty;
   uart_tx u_tx (
       .clk      (clk),
       .rst      (rst),

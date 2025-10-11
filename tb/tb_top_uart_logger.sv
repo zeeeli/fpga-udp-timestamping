@@ -22,7 +22,8 @@ module tb_top_uart_logger;
       .out_id(out_id),
       .out_start_ts(out_start_ts),
       .out_end_ts(out_end_ts),
-      .out_delta(out_delta)
+      .out_delta(out_delta),
+      .tx(tx)
   );
 
   // initializes clock and reset
@@ -101,13 +102,17 @@ module tb_top_uart_logger;
     // reset
     wait_cycles(6); rst = 1'b0;
 
+    // Wait for fifo busy to finish
+    wait(!dut.u_lfifo.wr_rst_busy && !dut.u_lfifo.rd_rst_busy);
+    repeat(2) @(posedge clk);
+
     // NOTE: Test Event 1
 
     push_event(16'h0012, 64'h0123_4567_89AB_CDEF,
                64'h0000_0000_0000_00A5, 64'h0000_0000_FEDC_BA98);
     recv_n_bytes(recv, LINE_BYTES);
     exp = "0012,0123456789ABCDEF,00000000000000A5,00000000FEDCBA98\n";
-    if (recv !== exp) begin
+    if (recv != exp) begin
       $display("FAIL E1:\n got: %s\n exp: %s", recv, exp); $fatal;
     end else $display("PASS E1: %s", recv);
 
@@ -116,7 +121,7 @@ module tb_top_uart_logger;
                64'h0000_0000_0000_0001, 64'h1122_3344_5566_7788);
     recv_n_bytes(recv, LINE_BYTES);
     exp = "ABCD,DEADBEEFCAFEBABE,0000000000000001,1122334455667788\n";
-    if (recv !== exp) begin
+    if (recv != exp) begin
       $display("FAIL E2:\n got: %s\n exp: %s", recv, exp); $fatal;
     end else $display("PASS E2: %s", recv);
 

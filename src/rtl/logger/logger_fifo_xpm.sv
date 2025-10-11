@@ -15,7 +15,11 @@ module logger_fifo_xpm #(
     // Read side
     input  logic       rd_en,
     output logic [7:0] dout,
-    output logic       empty
+    output logic       empty,
+
+    // Busy flags
+    output logic wr_rst_busy,
+    output logic rd_rst_busy
 );
 
   xpm_fifo_sync #(
@@ -38,7 +42,8 @@ module logger_fifo_xpm #(
       .rd_en      (rd_en),
       .empty      (empty),
       .data_valid (),
-      .wr_rst_busy(),
-      .rd_rst_busy()
+      .wr_rst_busy(wr_rst_busy),
+      .rd_rst_busy(rd_rst_busy),
+      .sleep      (1'b0)
   );
 endmodule
