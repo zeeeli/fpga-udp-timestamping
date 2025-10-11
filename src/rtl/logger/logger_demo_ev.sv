@@ -40,7 +40,7 @@ module logger_demo_ev #(
       out_valid_q <= 1'b0;
       out_id_q    <= '0;
     end else begin
-      // build event when timer expires
+      // build event when timer expires and out_valid is low
       if (!out_valid_q) begin
         if (time_gen_q == 0) begin
           out_valid_q <= 1'b1;
