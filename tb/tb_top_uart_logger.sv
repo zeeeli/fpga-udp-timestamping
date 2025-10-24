@@ -36,7 +36,7 @@ module tb_top_uart_logger;
 
   // UART sampling local params
   localparam int BIT_CYCLES = 100;  // 100 MHz / 1 Mbps
-  localparam int LINE_BYTES = 56;  // Size of outputted packet
+  localparam int LINE_BYTES = 57;  // Size of outputted packet
 
   // Helper Functions
   task automatic wait_cycles(input int n);
@@ -111,16 +111,20 @@ module tb_top_uart_logger;
     push_event(16'h0012, 64'h0123_4567_89AB_CDEF,
                64'h0000_0000_0000_00A5, 64'h0000_0000_FEDC_BA98);
     recv_n_bytes(recv, LINE_BYTES);
-    exp = "0012,0123456789ABCDEF,00000000000000A5,00000000FEDCBA98\n";
+    exp = $sformatf("%s%c%c",
+                "0012,0123456789ABCDEF,00000000000000A5,00000000FEDCBA98",
+                8'h0D, 8'h0A);  // CR, LF
     if (recv != exp) begin
       $display("FAIL E1:\n got: %s\n exp: %s", recv, exp); $fatal;
     end else $display("PASS E1: %s", recv);
 
     // NOTE: Event 2
-    push_event(16'hABCD, 64'hDEAD_BEEF_CAFE_BABE,
-               64'h0000_0000_0000_0001, 64'h1122_3344_5566_7788);
+    push_event(16'hABCD, 64'h5CE6_162F_CD51_A103,
+               64'h0000_0000_0000_0001, 64'h7625_58D4_534B_F6DB);
     recv_n_bytes(recv, LINE_BYTES);
-    exp = "ABCD,DEADBEEFCAFEBABE,0000000000000001,1122334455667788\n";
+    exp = $sformatf("%s%c%c",
+                "ABCD,5CE6162FCD51A103,0000000000000001,762558D4534BF6DB",
+                8'h0D, 8'h0A);  // CR, LF
     if (recv != exp) begin
       $display("FAIL E2:\n got: %s\n exp: %s", recv, exp); $fatal;
     end else $display("PASS E2: %s", recv);

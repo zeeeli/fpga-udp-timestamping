@@ -21,7 +21,7 @@ module top_uart_logger #(
   // TODO: Parametrize everything
   localparam int ID_NIB     = (ID_W + 3) / 4;
   localparam int TS_NIB     = (TS_W + 3) / 4;
-  localparam int LINE_BYTES = ID_NIB + 3*TS_NIB + 4; // ID Bytes + 3 TS Bytes + 3 commas + '\n'
+  localparam int LINE_BYTES = ID_NIB + 3*TS_NIB + 5; // ID Bytes + 3 TS Bytes + 3 commas + '\r' + '\n'
 
   //--------------------------------------------------------------------------------------------------------
   // Internal Registers

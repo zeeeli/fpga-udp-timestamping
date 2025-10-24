@@ -1,6 +1,6 @@
 // Accept event from timestamper -> pack data into 56 ASCII bytes -> Write
 // into FIFO
-//  => (ID(4 bytes), ',', START_TS(16), ',', END(16), ',', DELTA(16),'\n')
+//  => (ID(4 bytes), ',', START_TS(16), ',', END(16), ',', DELTA(16), '\r', '\n')
 //  => comma delimiter and line break escape char are included in packet
 module logger_ev_packer#(
     parameter int unsigned TS_W = 64,
@@ -27,7 +27,7 @@ module logger_ev_packer#(
   //--------------------------------------------------------------------------------------------------------
   // Internal Registers, Parameters and FSM
   //--------------------------------------------------------------------------------------------------------
-  localparam int LINE_BYTES = 56;  // Size of data packet being sent on the line
+  localparam int LINE_BYTES = 57;  // Size of data packet being sent on the line
 
   // registers for event data
   logic [ID_W-1:0] id_q;
@@ -45,6 +45,7 @@ module logger_ev_packer#(
     END,
     C3,     // Thirs comma delimiter
     DELTA,
+    CR,     // Carriage Return
     NL      // New line escape char '\n'
 } state_t;
 
@@ -98,8 +99,9 @@ module logger_ev_packer#(
   endfunction
 
   // Hex for comma and linebreak
-  localparam logic [7:0] COMMA = 8'h2C;
-  localparam logic [7:0] NEWLINE    = 8'h0A;
+  localparam logic [7:0] COMMA   = 8'h2C;
+  localparam logic [7:0] CRETURN = 8'h0D;
+  localparam logic [7:0] NEWLINE = 8'h0A;
 
   //--------------------------------------------------------------------------------------------------------
   // FSMD Registers
@@ -225,10 +227,19 @@ module logger_ev_packer#(
           fifo_wr_en = 1'd1;
           fifo_din   = char_d;
           if (nib_q == 4'd0) begin
-            state_next = NL;
+            state_next = CR;
           end else begin
             nib_d    = nib_q - 1;
           end
+        end
+      end
+
+      CR: begin
+        char_d = CRETURN;
+        if (can_write) begin
+          fifo_wr_en = 1'b1;
+          fifo_din   = char_d;
+          state_next = NL;
         end
       end
 

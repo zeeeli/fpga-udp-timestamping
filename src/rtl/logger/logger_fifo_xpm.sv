@@ -1,6 +1,6 @@
 module logger_fifo_xpm #(
     parameter int DEPTH            = 256,
-    parameter int PROG_FULL_THRESH = DEPTH - 56,
+    parameter int PROG_FULL_THRESH = DEPTH - 57,  // Depth - length of LINE_BYTE
     parameter bit FWFT             = 1            // First word fall through
 ) (
     input logic clk,
