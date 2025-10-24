@@ -9,7 +9,7 @@ module logger_demo_ev #(
     input  logic            rst,
     output logic            out_valid,
     input  logic            out_ready,
-    output logic [ID_W-1:0] oud_id,
+    output logic [ID_W-1:0] out_id,
     output logic [TS_W-1:0] out_start_ts,
     output logic [TS_W-1:0] out_end_ts,
     output logic [TS_W-1:0] out_delta

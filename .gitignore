@@ -16,6 +16,7 @@
 .Xil/
 xsim.dir/
 *.vcd
-
+*.xml
+*.html
 # Our outputs
 /build/
